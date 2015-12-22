@@ -2,12 +2,14 @@
 *~
 *.o
 /bin/arachne-pnr
+/bin/arachne-pnr-arm
 /tests/test_bv
 /tests/test_us
 /diff
 save
 /fuzz/*/findings
 /src/version_*.cc
+/temp/src_arm
 /tests/*/1k
 /tests/*/8k
 /share

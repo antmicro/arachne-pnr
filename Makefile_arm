@@ -1,7 +1,7 @@
 
 # build with default C/C++ compiler
-CC = gcc
-CXX = g++
+CC = $(CC_PREFIX)gcc
+CXX = $(CC_PREFIX)g++
 
 # build optimized without -DNDEBUG
 # OPTDEBUGFLAGS = -O0 -fno-inline -g
@@ -13,10 +13,10 @@ CXXFLAGS = -I$(SRC) -std=c++11 -MD $(OPTDEBUGFLAGS) -Wall -Wshadow -Wsign-compar
 LIBS = -lm
 
 DESTDIR = ./build
-ICEBOX = $(ROOT_DIR)/icestorm-tools/icebox
+ICEBOX = $(ROOT_DIR)/icestorm/icebox
 
-.PHONY: all
-all: bin/arachne-pnr share/arachne-pnr/chipdb-1k.bin share/arachne-pnr/chipdb-8k.bin bin/arachne-pnr-arm
+.PHONY: all src-prepare
+all: src-prepare bin/arachne-pnr-arm
 
 VER = 0.1+$(shell echo `git log --oneline | wc -l`)+$(shell echo `git diff --name-only HEAD | wc -l`)
 GIT_REV = $(shell git rev-parse --verify --short HEAD)
@@ -26,27 +26,12 @@ VER_HASH = $(shell echo "$(VER) $(GIT_REV)" | sum | cut -d ' ' -f -1)
 src/version_$(VER_HASH).cc:
 	echo "const char *version_str = \"arachne-pnr $(VER) (git sha1 $(GIT_REV), $(notdir $(CXX)) `$(CXX) --version | tr ' ()' '\n' | grep '^[0-9]' | head -n1` $(filter -f% -m% -O% -DNDEBUG,$(CXXFLAGS)))\";" > src/version_$(VER_HASH).cc
 
-bin/arachne-pnr: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
+src-prepare:
+	rm -f src/*.o
+	rm -f src/*.d
+
+bin/arachne-pnr-arm: src/arachne-pnr.o src/netlist.o src/blif.o src/pack.o src/place.o src/util.o src/io.o src/route.o src/chipdb.o src/location.o src/configuration.o src/line_parser.o src/pcf.o src/global.o src/constant.o src/designstate.o src/version_$(VER_HASH).o
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-bin/arachne-pnr-arm: Makefile_arm
-	echo "Making arachne-pnr for ARM..."
-	make -f Makefile_arm
-	echo "Done."
-
-share/arachne-pnr/chipdb-1k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-1k.txt
-	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 1k -c $(ICEBOX)/chipdb-1k.txt --write-binary-chipdb share/arachne-pnr/chipdb-1k.bin
-
-share/arachne-pnr/chipdb-8k.bin: bin/arachne-pnr $(ICEBOX)/chipdb-8k.txt
-	mkdir -p share/arachne-pnr
-	bin/arachne-pnr -d 8k -c $(ICEBOX)/chipdb-8k.txt --write-binary-chipdb share/arachne-pnr/chipdb-8k.bin
-
-tests/test_bv: tests/test_bv.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
-
-tests/test_us: tests/test_us.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
 
 # assumes icestorm installed
 simpletest: all tests/test_bv tests/test_us
@@ -105,7 +90,7 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr*
+	rm -f src/*.o tests/*.o src/*.d tests/*.d bin/arachne-pnr
 	rm -f tests/test_bv tests/test_us
 	rm -f share/arachne-pnr/*.bin
 	rm -f src/version_*
